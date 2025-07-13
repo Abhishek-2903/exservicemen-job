@@ -1445,6 +1445,64 @@
             matchScores: []
         };
 
+        // API Configuration
+        const API_CONFIG = {
+            url: 'https://jsearch.p.rapidapi.com/search',
+            key: '65bcd9320dmsh1dddafa5c283779p1afbdfjsn85dd72e4eea8',
+            host: 'jsearch.p.rapidapi.com'
+        };
+
+        // Comprehensive search queries to get REAL data
+        const REAL_DATA_QUERIES = [
+            // Broad searches
+            'jobs in india',
+            'jobs india',
+            'work india',
+            'careers india',
+            'employment india',
+            
+            // Management roles
+            'manager india',
+            'management jobs india',
+            'senior manager india',
+            'project manager india',
+            'operations manager india',
+            
+            // Leadership roles
+            'director jobs india',
+            'head jobs india',
+            'lead jobs india',
+            'supervisor india',
+            'team lead india',
+            
+            // Ex-military friendly
+            'security jobs india',
+            'operations jobs india',
+            'logistics jobs india',
+            'administration jobs india',
+            'consultant jobs india',
+            
+            // Industry specific
+            'corporate jobs india',
+            'government jobs india',
+            'defense jobs india',
+            'infrastructure jobs india',
+            'manufacturing jobs india',
+            
+            // Location specific
+            'jobs mumbai',
+            'jobs delhi',
+            'jobs bangalore',
+            'jobs chennai',
+            'jobs pune',
+            'jobs hyderabad',
+            
+            // Remote and flexible
+            'remote jobs india',
+            'work from home india',
+            'hybrid jobs india'
+        ];
+
         // Simulated Defence Database
         const defenceDatabase = {
             'JC123456': {
@@ -1536,20 +1594,6 @@
                 return Math.min(Math.round(score), 100);
             }
 
-            translateMilitarySkills(militarySkills) {
-                const translationMap = {
-                    'Infantry Operations': 'Security Management & Strategic Planning',
-                    'Navigation': 'Logistics & Route Optimization',
-                    'Fighter Operations': 'High-Pressure Decision Making & Risk Assessment',
-                    'Signals': 'Communication Systems & Network Management',
-                    'Engineering': 'Technical Project Management & Infrastructure',
-                    'Medical Corps': 'Healthcare Administration & Emergency Response',
-                    'Artillery': 'Precision Planning & Resource Allocation'
-                };
-                
-                return militarySkills.map(skill => translationMap[skill] || skill);
-            }
-
             generateOptimizedContent(userData, jobDescription) {
                 const keywords = this.extractKeywords(jobDescription);
                 const optimizedSkills = this.optimizeSkills(userData.skills, keywords);
@@ -1631,7 +1675,218 @@
         // Initialize AI
         const jobMatchingAI = new JobMatchingAI();
 
-        // Hide particles when app is loaded
+        // REAL DATA FETCHING - Aggressive approach to get actual jobs
+        async function fetchRealJobsFromAPI(query, maxRetries = 3) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    console.log(`🔍 Attempt ${attempt}: Searching for "${query}"`);
+                    
+                    // Try different variations of the search
+                    const searchVariations = [
+                        encodeURIComponent(query),
+                        encodeURIComponent(query.replace('india', 'IN')),
+                        encodeURIComponent(query.replace('jobs', 'careers')),
+                        encodeURIComponent(query.replace('india', 'mumbai')),
+                        encodeURIComponent(query.replace('india', 'delhi'))
+                    ];
+
+                    for (const searchQuery of searchVariations) {
+                        // Try different country codes
+                        const countries = ['in', 'us'];
+                        
+                        for (const country of countries) {
+                            const url = `${API_CONFIG.url}?query=${searchQuery}&page=1&num_pages=1&country=${country}&date_posted=all`;
+                            
+                            console.log(`📡 API Call: ${decodeURIComponent(searchQuery)} (${country})`);
+                            
+                            const response = await fetch(url, {
+                                method: 'GET',
+                                headers: {
+                                    'x-rapidapi-key': API_CONFIG.key,
+                                    'x-rapidapi-host': API_CONFIG.host
+                                }
+                            });
+
+                            if (!response.ok) {
+                                console.log(`❌ API Error: ${response.status} ${response.statusText}`);
+                                continue;
+                            }
+
+                            const result = await response.json();
+                            console.log(`📊 API Response: ${result.data ? result.data.length : 0} jobs for "${decodeURIComponent(searchQuery)}" (${country})`);
+                            
+                            if (result.data && result.data.length > 0) {
+                                console.log(`✅ SUCCESS! Found ${result.data.length} real jobs!`);
+                                console.log('Sample job:', result.data[0]);
+                                return transformAPIJobs(result.data);
+                            }
+                            
+                            // Small delay between API calls
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                    }
+                    
+                    // Longer delay between retry attempts
+                    if (attempt < maxRetries) {
+                        console.log(`⏳ Waiting before retry attempt ${attempt + 1}...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                } catch (error) {
+                    console.error(`❌ Error in attempt ${attempt}:`, error);
+                    if (attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+            }
+            
+            console.log(`💔 No real jobs found after ${maxRetries} attempts for: ${query}`);
+            return [];
+        }
+
+        // Comprehensive search that tries ALL queries until it finds real data
+        async function searchForRealJobs() {
+            console.log('🚀 Starting comprehensive search for REAL jobs...');
+            showToast('Searching for real job opportunities across India...');
+            
+            let allJobs = [];
+            let successfulQueries = 0;
+            let totalQueries = REAL_DATA_QUERIES.length;
+            
+            for (let i = 0; i < totalQueries; i++) {
+                const query = REAL_DATA_QUERIES[i];
+                
+                try {
+                    showToast(`Searching: ${query} (${i + 1}/${totalQueries})`);
+                    
+                    const jobs = await fetchRealJobsFromAPI(query, 2);
+                    
+                    if (jobs && jobs.length > 0) {
+                        allJobs = [...allJobs, ...jobs];
+                        successfulQueries++;
+                        console.log(`✅ Query "${query}": Found ${jobs.length} jobs`);
+                        
+                        // If we have enough jobs, we can stop early
+                        if (allJobs.length >= 50) {
+                            console.log(`🎯 Got ${allJobs.length} jobs, stopping search early`);
+                            break;
+                        }
+                    } else {
+                        console.log(`❌ Query "${query}": No jobs found`);
+                    }
+                    
+                    // Progress update
+                    if ((i + 1) % 5 === 0) {
+                        showToast(`Searched ${i + 1}/${totalQueries} queries. Found ${allJobs.length} jobs so far...`);
+                    }
+                    
+                    // Small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                } catch (error) {
+                    console.error(`Error with query "${query}":`, error);
+                }
+            }
+            
+            // Remove duplicates
+            const uniqueJobs = allJobs.filter((job, index, self) => 
+                index === self.findIndex((j) => 
+                    j.title.toLowerCase() === job.title.toLowerCase() && 
+                    j.company.toLowerCase() === job.company.toLowerCase()
+                )
+            );
+            
+            console.log(`🎉 FINAL RESULT: ${uniqueJobs.length} unique real jobs found from ${successfulQueries} successful queries!`);
+            
+            if (uniqueJobs.length > 0) {
+                showToast(`SUCCESS! Found ${uniqueJobs.length} real job opportunities!`);
+                return uniqueJobs;
+            } else {
+                showToast('No real jobs found from API. This might be due to API limitations or quota.');
+                console.log('⚠️ API might have restrictions or reached quota limit');
+                return [];
+            }
+        }
+
+        function transformAPIJobs(apiJobs) {
+            return apiJobs.map(job => ({
+                id: job.job_id || Math.random().toString(36).substr(2, 9),
+                title: job.job_title || 'Position Available',
+                company: job.employer_name || 'Company Name',
+                location: job.job_city && job.job_country ? 
+                    `${job.job_city}, ${job.job_country}` : 
+                    (job.job_state ? `${job.job_state}, India` : 'India'),
+                type: job.job_employment_type || 'Full Time',
+                experience: determineExperienceLevel(job.job_description),
+                salary: job.job_salary_range || 'Competitive Salary',
+                description: job.job_description || 'Job description not available',
+                requirements: job.job_qualifications || [],
+                postedDate: formatDate(job.job_posted_at_datetime_utc) || 'Recently posted',
+                applyLink: job.job_apply_link || '#',
+                industry: job.employer_company_type || 'Various Industries',
+                logo: job.employer_logo || null,
+                remote: job.job_is_remote || false,
+                benefits: job.job_benefits || null,
+                highlights: job.job_highlights || null,
+                isRealData: true // Mark as real API data
+            }));
+        }
+
+        function determineExperienceLevel(description) {
+            if (!description) return 'All Levels';
+            
+            const desc = description.toLowerCase();
+            if (desc.includes('senior') || desc.includes('lead') || desc.includes('manager') || desc.includes('director')) {
+                return 'Senior Level';
+            } else if (desc.includes('mid') || desc.includes('intermediate') || desc.includes('experienced')) {
+                return 'Mid Level';
+            } else if (desc.includes('junior') || desc.includes('entry') || desc.includes('fresher')) {
+                return 'Entry Level';
+            }
+            return 'Mid Level';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Recently posted';
+            
+            try {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffTime = Math.abs(now - date);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) return '1 day ago';
+                if (diffDays < 7) return `${diffDays} days ago`;
+                if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
+                return `${Math.ceil(diffDays / 30)} months ago`;
+            } catch (error) {
+                return 'Recently posted';
+            }
+        }
+
+        // Only use fallback if absolutely no real data is available
+        function getFallbackJobs() {
+            console.log('⚠️ Using fallback jobs - API returned no data');
+            return [
+                {
+                    id: 'fallback_notice',
+                    title: '⚠️ API Data Unavailable',
+                    company: 'Career Portal Notice',
+                    location: 'India',
+                    type: 'Information',
+                    experience: 'All Levels',
+                    salary: 'N/A',
+                    description: 'Real job data is currently unavailable from the API. This might be due to API limitations, quota restrictions, or temporary service issues. Please try again later or contact support.',
+                    postedDate: 'Now',
+                    applyLink: '#',
+                    industry: 'Notice',
+                    remote: false,
+                    isRealData: false
+                }
+            ];
+        }
+
+        // UI Functions
         function hideParticles() {
             const particles = document.querySelector('.particles');
             if (particles) {
@@ -1639,45 +1894,33 @@
             }
         }
 
-        // Login Handler
         function handleLogin(event) {
             event.preventDefault();
             const serviceNumber = document.getElementById('serviceNumber').value.toUpperCase();
             const password = document.getElementById('password').value;
             
-            // Check against defence database
             if (defenceDatabase[serviceNumber] && password) {
                 currentUser = {
                     serviceNumber: serviceNumber,
                     ...defenceDatabase[serviceNumber]
                 };
                 
-                // Initialize user skills
                 skills = [...currentUser.skills];
                 
-                // Hide particles and show app
                 hideParticles();
                 document.getElementById('loginSection').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'block';
                 document.getElementById('userName').textContent = `Welcome, ${currentUser.name}`;
-                document.getElementById('profileServiceNumber').value = serviceNumber;
                 
-                // Update profile display
                 updateProfileDisplay();
-                
-                showToast('Login successful! Welcome to Ex-Servicemen Career Portal');
-                
-                // Load dashboard data
+                showToast('Login successful! Loading real job data...');
                 loadDashboard();
-                
-                // Generate AI recommendations
-                generateRecommendations();
+                generateRealRecommendations();
             } else {
-                showToast('Invalid credentials. Please use these : JC123456, NS234567, or AF345678');
+                showToast('Invalid credentials. Use: JC123456, NS234567, or AF345678');
             }
         }
 
-        // Dashboard Functions
         function loadDashboard() {
             showSection('dashboard');
             updateDashboardStats();
@@ -1692,7 +1935,6 @@
                 : 0;
             document.getElementById('avgMatchScore').textContent = avgScore + '%';
             
-            // Calculate profile strength
             let profileStrength = 0;
             if (currentUser.name) profileStrength += 25;
             if (currentUser.skills.length > 3) profileStrength += 25;
@@ -1702,54 +1944,48 @@
             document.getElementById('profileStrength').textContent = profileStrength + '%';
         }
 
-        // Generate AI Recommendations
-        function generateRecommendations() {
-            const recommendations = [
-                {
-                    title: 'Security Operations Manager',
-                    company: 'Reliance Industries',
-                    location: 'Mumbai',
-                    type: 'Full Time',
-                    experience: 'Senior Level',
-                    salary: '₹15-20 LPA',
-                    description: 'Leading security operations for corporate facilities. Military background preferred.',
-                    matchScore: 92,
-                    reason: 'Matches your security and leadership experience'
-                },
-                {
-                    title: 'Crisis Management Head',
-                    company: 'Tata Consultancy Services',
-                    location: 'Pune',
-                    type: 'Full Time',
-                    experience: 'Senior Level',
-                    salary: '₹18-25 LPA',
-                    description: 'Develop and implement crisis management strategies across organization.',
-                    matchScore: 88,
-                    reason: 'Aligns with your crisis management skills'
-                },
-                {
-                    title: 'Operations Director',
-                    company: 'Amazon India',
-                    location: 'Bangalore',
-                    type: 'Full Time',
-                    experience: 'Senior Level',
-                    salary: '₹25-35 LPA',
-                    description: 'Oversee large-scale operations and logistics. Ex-servicemen preferred.',
-                    matchScore: 85,
-                    reason: 'Matches your operational leadership experience'
+        // Generate recommendations using REAL data
+        async function generateRealRecommendations() {
+            try {
+                console.log('🎯 Generating recommendations with REAL job data...');
+                
+                const realJobs = await searchForRealJobs();
+                
+                if (realJobs.length > 0) {
+                    // Calculate match scores for real jobs
+                    realJobs.forEach(job => {
+                        job.matchScore = jobMatchingAI.calculateMatchScore(
+                            currentUser.skills,
+                            job.description,
+                            currentUser.yearsOfService
+                        );
+                        job.reason = `${job.matchScore}% match based on your ${currentUser.specialization} background`;
+                    });
+                    
+                    // Sort by match score and take top recommendations
+                    realJobs.sort((a, b) => b.matchScore - a.matchScore);
+                    const topRecommendations = realJobs.slice(0, 6);
+                    
+                    displayJobs(topRecommendations, 'recommendedJobs');
+                    showToast(`Showing ${topRecommendations.length} top matches from ${realJobs.length} real jobs!`);
+                } else {
+                    // Only show fallback if absolutely no real data
+                    const fallbackJobs = getFallbackJobs();
+                    displayJobs(fallbackJobs, 'recommendedJobs');
                 }
-            ];
-            
-            displayJobs(recommendations, 'recommendedJobs');
+                
+            } catch (error) {
+                console.error('Error generating real recommendations:', error);
+                const fallbackJobs = getFallbackJobs();
+                displayJobs(fallbackJobs, 'recommendedJobs');
+            }
         }
 
-        // Logout Handler
         function logout() {
             currentUser = null;
             skills = [];
             userProfile = { jobsApplied: 0, cvsGenerated: 0, matchScores: [] };
             
-            // Show particles again
             const particles = document.querySelector('.particles');
             if (particles) {
                 particles.style.display = 'block';
@@ -1761,22 +1997,17 @@
             showToast('Logged out successfully');
         }
 
-        // Section Navigation
         function showSection(sectionId) {
-            // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
             });
             
-            // Show selected section
             document.getElementById(sectionId).classList.add('active');
             
-            // Update nav links
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
             
-            // Find and activate the corresponding nav link
             const navLinks = document.querySelectorAll('.nav-link');
             navLinks.forEach(link => {
                 if (link.textContent.toLowerCase().includes(sectionId.toLowerCase()) ||
@@ -1786,165 +2017,117 @@
             });
         }
 
-        // Job Search Functions
-        function searchJobs() {
+        // Main search function - REAL DATA ONLY
+        async function searchJobs() {
             showLoader();
-            const keywords = document.getElementById('searchKeywords').value;
-            const location = document.getElementById('searchLocation').value;
-            const experience = document.getElementById('experienceLevel').value;
-            const jobType = document.getElementById('jobType').value;
-            const salaryRange = document.getElementById('salaryRange').value;
-            const industry = document.getElementById('industry').value;
+            const keywords = document.getElementById('searchKeywords').value || '';
+            const location = document.getElementById('searchLocation').value || 'india';
             
-            // Simulate AI job search with matching
-            setTimeout(() => {
-                const jobs = generateJobResults(keywords, location, experience, jobType, salaryRange, industry);
+            try {
+                showToast('Searching for real jobs from API...');
                 
-                // Calculate match scores for each job
-                jobs.forEach(job => {
-                    job.matchScore = jobMatchingAI.calculateMatchScore(
-                        currentUser.skills,
-                        job.description,
-                        currentUser.yearsOfService
-                    );
-                });
+                let searchQuery;
+                if (keywords) {
+                    searchQuery = `${keywords} ${location}`;
+                } else {
+                    // If no keywords, search for management roles suitable for ex-servicemen
+                    searchQuery = `manager ${location}`;
+                }
                 
-                // Sort by match score
-                jobs.sort((a, b) => b.matchScore - a.matchScore);
+                console.log(`🔍 User search query: ${searchQuery}`);
                 
-                displayJobs(jobs, 'jobResults');
+                // Try to get real jobs for the search query
+                let jobs = await fetchRealJobsFromAPI(searchQuery, 3);
+                
+                // If no results for specific query, try broader search
+                if (jobs.length === 0) {
+                    console.log('No results for specific query, trying broader search...');
+                    showToast('Expanding search to find more opportunities...');
+                    jobs = await searchForRealJobs();
+                }
+                
+                if (jobs.length > 0) {
+                    // Apply local filters
+                    const experience = document.getElementById('experienceLevel').value;
+                    const jobType = document.getElementById('jobType').value;
+                    const salaryRange = document.getElementById('salaryRange').value;
+                    const industry = document.getElementById('industry').value;
+                    
+                    let filteredJobs = filterJobs(jobs, {
+                        experience,
+                        jobType,
+                        salaryRange,
+                        industry
+                    });
+                    
+                    // Calculate match scores
+                    filteredJobs.forEach(job => {
+                        job.matchScore = jobMatchingAI.calculateMatchScore(
+                            currentUser ? currentUser.skills : ['Leadership', 'Management'],
+                            job.description,
+                            currentUser ? currentUser.yearsOfService : 15
+                        );
+                    });
+                    
+                    // Sort by match score
+                    filteredJobs.sort((a, b) => b.matchScore - a.matchScore);
+                    
+                    displayJobs(filteredJobs, 'jobResults');
+                    showToast(`Found ${filteredJobs.length} real job opportunities!`);
+                } else {
+                    // Show notice about API limitations
+                    const notice = getFallbackJobs();
+                    displayJobs(notice, 'jobResults');
+                    showToast('Unable to fetch real job data from API');
+                }
+                
                 hideLoader();
-                showToast(`Found ${jobs.length} AI-matched jobs for you`);
-            }, 1500);
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                hideLoader();
+                const notice = getFallbackJobs();
+                displayJobs(notice, 'jobResults');
+                showToast('Search failed due to API issues');
+            }
         }
 
-        function generateJobResults(keywords, location, experience, jobType, salaryRange, industry) {
-            // Enhanced job database with more details
-            const jobDatabase = [
-                {
-                    title: 'Security Head',
-                    company: 'Infosys Limited',
-                    location: 'Pune',
-                    type: 'Full Time',
-                    experience: 'Senior Level',
-                    salary: '₹20-30 LPA',
-                    industry: 'it',
-                    description: 'Leading IT company seeking experienced security professional with military background. Manage enterprise security operations.',
-                    requirements: ['Security clearance', 'Leadership experience', 'Crisis management'],
-                    postedDate: '1 day ago'
-                },
-                {
-                    title: 'Facility Operations Manager',
-                    company: 'DLF Group',
-                    location: 'Gurgaon',
-                    type: 'Full Time',
-                    experience: 'Mid Level',
-                    salary: '₹10-15 LPA',
-                    industry: 'real-estate',
-                    description: 'Managing large commercial properties, ex-servicemen preferred. Oversee facility operations and security.',
-                    requirements: ['Operations management', 'Team leadership', 'Resource planning'],
-                    postedDate: '5 days ago'
-                },
-                {
-                    title: 'Crisis Management Consultant',
-                    company: 'PwC India',
-                    location: 'Mumbai',
-                    type: 'Contract',
-                    experience: 'Senior Level',
-                    salary: '₹25-40 LPA',
-                    industry: 'consulting',
-                    description: 'Consulting role for crisis and risk management. Help clients develop emergency response strategies.',
-                    requirements: ['Strategic planning', 'Risk assessment', 'Communication skills'],
-                    postedDate: '1 week ago'
-                },
-                {
-                    title: 'Corporate Training Manager',
-                    company: 'Mahindra Group',
-                    location: 'Chennai',
-                    type: 'Full Time',
-                    experience: 'Mid Level',
-                    salary: '₹12-18 LPA',
-                    industry: 'manufacturing',
-                    description: 'Corporate training role, military training experience valued. Design and implement training programs.',
-                    requirements: ['Training experience', 'Curriculum development', 'Leadership'],
-                    postedDate: '4 days ago'
-                },
-                {
-                    title: 'Supply Chain Head',
-                    company: 'Flipkart',
-                    location: 'Bangalore',
-                    type: 'Full Time',
-                    experience: 'Senior Level',
-                    salary: '₹30-45 LPA',
-                    industry: 'logistics',
-                    description: 'Lead supply chain operations for e-commerce giant. Military logistics experience highly valued.',
-                    requirements: ['Logistics management', 'Strategic planning', 'Technology adoption'],
-                    postedDate: '2 days ago'
-                },
-                {
-                    title: 'Government Liaison Officer',
-                    company: 'L&T Defence',
-                    location: 'Delhi',
-                    type: 'Full Time',
-                    experience: 'Senior Level',
-                    salary: '₹20-30 LPA',
-                    industry: 'government',
-                    description: 'Interface with defence establishments. Ex-servicemen with defence procurement experience preferred.',
-                    requirements: ['Government relations', 'Defence knowledge', 'Communication'],
-                    postedDate: '3 days ago'
-                }
-            ];
+        function filterJobs(jobs, filters) {
+            let filtered = [...jobs];
             
-            // Filter based on search criteria
-            let filteredJobs = jobDatabase;
-            
-            if (keywords) {
-                filteredJobs = filteredJobs.filter(job => 
-                    job.title.toLowerCase().includes(keywords.toLowerCase()) ||
-                    job.description.toLowerCase().includes(keywords.toLowerCase()) ||
-                    job.requirements.some(req => req.toLowerCase().includes(keywords.toLowerCase()))
+            if (filters.experience && filters.experience !== '') {
+                filtered = filtered.filter(job => 
+                    job.experience.toLowerCase().includes(filters.experience.toLowerCase())
                 );
             }
             
-            if (location) {
-                filteredJobs = filteredJobs.filter(job => 
-                    job.location.toLowerCase().includes(location.toLowerCase())
+            if (filters.jobType && filters.jobType !== '') {
+                filtered = filtered.filter(job => 
+                    job.type.toLowerCase().includes(filters.jobType.toLowerCase())
                 );
             }
             
-            if (experience) {
-                filteredJobs = filteredJobs.filter(job => 
-                    job.experience.toLowerCase().includes(experience)
-                );
-            }
-            
-            if (jobType) {
-                filteredJobs = filteredJobs.filter(job => 
-                    job.type.toLowerCase().includes(jobType)
-                );
-            }
-            
-            if (salaryRange) {
-                filteredJobs = filteredJobs.filter(job => {
-                    const salary = job.salary.match(/\d+/);
+            if (filters.salaryRange && filters.salaryRange !== '') {
+                filtered = filtered.filter(job => {
+                    const salary = job.salary.match(/[\d,]+/);
                     if (salary) {
-                        const salaryNum = parseInt(salary[0]);
-                        if (salaryRange === '0-5') return salaryNum <= 5;
-                        if (salaryRange === '5-10') return salaryNum >= 5 && salaryNum <= 10;
-                        if (salaryRange === '10-20') return salaryNum >= 10 && salaryNum <= 20;
-                        if (salaryRange === '20+') return salaryNum >= 20;
+                        const salaryNum = parseInt(salary[0].replace(/,/g, ''));
+                        if (filters.salaryRange === '0-5') return salaryNum <= 500000;
+                        if (filters.salaryRange === '5-10') return salaryNum >= 500000 && salaryNum <= 1000000;
+                        if (filters.salaryRange === '10-20') return salaryNum >= 1000000 && salaryNum <= 2000000;
+                        if (filters.salaryRange === '20+') return salaryNum >= 2000000;
                     }
                     return true;
                 });
             }
             
-            if (industry) {
-                filteredJobs = filteredJobs.filter(job => 
-                    job.industry === industry
+            if (filters.industry && filters.industry !== '') {
+                filtered = filtered.filter(job => 
+                    job.industry.toLowerCase().includes(filters.industry.toLowerCase())
                 );
             }
             
-            return filteredJobs;
+            return filtered;
         }
 
         function displayJobs(jobs, containerId) {
@@ -1952,17 +2135,31 @@
             resultsContainer.innerHTML = '';
             
             if (jobs.length === 0) {
-                resultsContainer.innerHTML = '<p style="text-align: center; opacity: 0.7;">No jobs found matching your criteria. Try adjusting your filters.</p>';
+                resultsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; opacity: 0.7;">
+                        <h3>No jobs found</h3>
+                        <p>Try adjusting your search criteria</p>
+                        <button onclick="searchJobs()" style="margin-top: 15px; padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Search All Jobs
+                        </button>
+                    </div>
+                `;
                 return;
             }
             
             jobs.forEach(job => {
                 const jobCard = document.createElement('div');
                 jobCard.className = 'job-card';
+                
+                // Add visual indicator for real vs fallback data
+                const dataSource = job.isRealData !== false ? 
+                    '<span style="background: #27ae60; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 10px;">📡 LIVE DATA</span>' :
+                    '<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 10px;">⚠️ NOTICE</span>';
+                
                 jobCard.innerHTML = `
                     <div class="job-card-header">
                         <div>
-                            <h3 class="job-title">${job.title}</h3>
+                            <h3 class="job-title">${job.title} ${dataSource}</h3>
                             <p class="job-company">${job.company}</p>
                         </div>
                         ${job.matchScore ? `<div class="match-score">🎯 ${job.matchScore}% Match</div>` : ''}
@@ -1973,34 +2170,43 @@
                         <span class="job-detail-item">📊 ${job.experience}</span>
                         ${job.salary ? `<span class="job-detail-item">💰 ${job.salary}</span>` : ''}
                         <span class="job-detail-item">📅 ${job.postedDate}</span>
+                        ${job.remote ? '<span class="job-detail-item">🏠 Remote</span>' : ''}
                     </div>
-                    <p style="margin-top: 12px; opacity: 0.9; line-height: 1.6;">${job.description}</p>
+                    <p style="margin-top: 12px; opacity: 0.9; line-height: 1.6;">${job.description.length > 200 ? job.description.substring(0, 200) + '...' : job.description}</p>
                     ${job.reason ? `<p style="margin-top: 8px; color: var(--success-color); font-size: 14px;">✓ ${job.reason}</p>` : ''}
-                    <button class="apply-btn" onclick="applyForJob('${job.title}', '${job.company}', ${job.matchScore || 0})">
-                        Apply Now →
-                    </button>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="apply-btn" onclick="applyForJob('${job.title}', '${job.company}', ${job.matchScore || 0}, '${job.applyLink || '#'}')">
+                            Apply Now →
+                        </button>
+                        ${job.applyLink && job.applyLink !== '#' ? `
+                            <button class="apply-btn" style="background: var(--secondary-color);" onclick="window.open('${job.applyLink}', '_blank')">
+                                External Apply 🔗
+                            </button>
+                        ` : ''}
+                    </div>
                 `;
                 resultsContainer.appendChild(jobCard);
             });
         }
 
-        function applyForJob(jobTitle, company, matchScore) {
+        function applyForJob(jobTitle, company, matchScore, applyLink) {
             userProfile.jobsApplied++;
             if (matchScore > 0) {
                 userProfile.matchScores.push(matchScore);
             }
             updateDashboardStats();
-            showToast(`Application submitted for ${jobTitle} at ${company}`);
+            
+            if (applyLink && applyLink !== '#') {
+                showToast(`Redirecting to application for ${jobTitle} at ${company}`);
+                setTimeout(() => {
+                    window.open(applyLink, '_blank');
+                }, 1000);
+            } else {
+                showToast(`Application submitted for ${jobTitle} at ${company}`);
+            }
         }
 
         // CV Generator Functions
-        document.getElementById('skillInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                addSkill();
-            }
-        });
-
         function addSkill() {
             const skillInput = document.getElementById('skillInput');
             const skill = skillInput.value.trim();
@@ -2019,15 +2225,17 @@
 
         function updateSkillsDisplay() {
             const container = document.getElementById('skillsContainer');
-            if (skills.length === 0) {
-                container.innerHTML = '<span style="opacity: 0.5;">No skills added yet</span>';
-            } else {
-                container.innerHTML = skills.map(skill => `
-                    <span class="skill-tag">
-                        ${skill}
-                        <span class="skill-remove" onclick="removeSkill('${skill}')">×</span>
-                    </span>
-                `).join('');
+            if (container) {
+                if (skills.length === 0) {
+                    container.innerHTML = '<span style="opacity: 0.5;">No skills added yet</span>';
+                } else {
+                    container.innerHTML = skills.map(skill => `
+                        <span class="skill-tag">
+                            ${skill}
+                            <span class="skill-remove" onclick="removeSkill('${skill}')">×</span>
+                        </span>
+                    `).join('');
+                }
             }
         }
 
@@ -2038,28 +2246,28 @@
             const aiInsights = document.getElementById('aiInsights');
             
             // Show AI progress
-            aiProgress.style.display = 'block';
-            aiInsights.style.display = 'none';
+            if (aiProgress) aiProgress.style.display = 'block';
+            if (aiInsights) aiInsights.style.display = 'none';
             
             // Collect form data
             const cvData = {
-                name: document.getElementById('cvName').value || currentUser.name,
-                email: document.getElementById('cvEmail').value,
-                phone: document.getElementById('cvPhone').value,
-                location: document.getElementById('cvLocation').value,
-                branch: document.getElementById('cvBranch').value || currentUser.branch,
-                rank: document.getElementById('cvRank').value || currentUser.rank,
-                years: document.getElementById('cvYears').value || currentUser.yearsOfService,
-                specialization: document.getElementById('cvSpecialization').value || currentUser.specialization,
-                experience: document.getElementById('cvExperience').value,
-                targetJobTitle: document.getElementById('targetJobTitle').value,
-                jobDescription: document.getElementById('jobDescription').value,
+                name: document.getElementById('cvName')?.value || currentUser.name,
+                email: document.getElementById('cvEmail')?.value,
+                phone: document.getElementById('cvPhone')?.value,
+                location: document.getElementById('cvLocation')?.value,
+                branch: document.getElementById('cvBranch')?.value || currentUser.branch,
+                rank: document.getElementById('cvRank')?.value || currentUser.rank,
+                years: document.getElementById('cvYears')?.value || currentUser.yearsOfService,
+                specialization: document.getElementById('cvSpecialization')?.value || currentUser.specialization,
+                experience: document.getElementById('cvExperience')?.value,
+                targetJobTitle: document.getElementById('targetJobTitle')?.value,
+                jobDescription: document.getElementById('jobDescription')?.value,
                 skills: skills
             };
             
             // Validate required fields
             if (!cvData.name || !cvData.email || !cvData.phone) {
-                aiProgress.style.display = 'none';
+                if (aiProgress) aiProgress.style.display = 'none';
                 showToast('Please fill in all required fields');
                 return;
             }
@@ -2068,36 +2276,38 @@
             let progress = 0;
             const progressInterval = setInterval(() => {
                 progress += 10;
-                progressFill.style.width = progress + '%';
+                if (progressFill) progressFill.style.width = progress + '%';
                 
                 // Update status messages
-                if (progress === 20) progressStatus.textContent = 'Analyzing military experience...';
-                else if (progress === 40) progressStatus.textContent = 'Translating skills to civilian terms...';
-                else if (progress === 60) progressStatus.textContent = 'Optimizing for ATS systems...';
-                else if (progress === 80) progressStatus.textContent = 'Matching with job requirements...';
-                else if (progress === 100) {
-                    progressStatus.textContent = 'Finalizing AI-optimized CV...';
-                    clearInterval(progressInterval);
-                    
-                    // Generate CV after progress completes
-                    setTimeout(() => {
-                        const aiOptimized = jobMatchingAI.generateOptimizedContent(cvData, cvData.jobDescription);
-                        const cv = generateAIOptimizedCV(cvData, aiOptimized);
+                if (progressStatus) {
+                    if (progress === 20) progressStatus.textContent = 'Analyzing military experience...';
+                    else if (progress === 40) progressStatus.textContent = 'Translating skills to civilian terms...';
+                    else if (progress === 60) progressStatus.textContent = 'Optimizing for ATS systems...';
+                    else if (progress === 80) progressStatus.textContent = 'Matching with job requirements...';
+                    else if (progress === 100) {
+                        progressStatus.textContent = 'Finalizing AI-optimized CV...';
+                        clearInterval(progressInterval);
                         
-                        // Show insights
-                        displayAIInsights(aiOptimized);
-                        
-                        // Display CV
-                        displayCV(cv);
-                        
-                        // Update stats
-                        userProfile.cvsGenerated++;
-                        updateDashboardStats();
-                        
-                        // Hide progress, show insights
-                        aiProgress.style.display = 'none';
-                        showToast('AI-Optimized CV generated successfully!');
-                    }, 500);
+                        // Generate CV after progress completes
+                        setTimeout(() => {
+                            const aiOptimized = jobMatchingAI.generateOptimizedContent(cvData, cvData.jobDescription);
+                            const cv = generateAIOptimizedCV(cvData, aiOptimized);
+                            
+                            // Show insights
+                            displayAIInsights(aiOptimized);
+                            
+                            // Display CV
+                            displayCV(cv);
+                            
+                            // Update stats
+                            userProfile.cvsGenerated++;
+                            updateDashboardStats();
+                            
+                            // Hide progress, show insights
+                            if (aiProgress) aiProgress.style.display = 'none';
+                            showToast('AI-Optimized CV generated successfully!');
+                        }, 500);
+                    }
                 }
             }, 200);
         }
@@ -2106,19 +2316,21 @@
             const aiInsights = document.getElementById('aiInsights');
             const insightsList = document.getElementById('insightsList');
             
-            const insights = [
-                `Identified ${aiOptimized.keywords.length} key keywords from job description`,
-                `Translated ${aiOptimized.skills.length} military skills to civilian equivalents`,
-                `Generated ${aiOptimized.achievements.length} quantifiable achievements`,
-                'Optimized content for ATS (Applicant Tracking System) compatibility',
-                'Emphasized leadership and management experience for civilian context'
-            ];
-            
-            insightsList.innerHTML = insights.map(insight => 
-                `<div class="insight-item">${insight}</div>`
-            ).join('');
-            
-            aiInsights.style.display = 'block';
+            if (aiInsights && insightsList) {
+                const insights = [
+                    `Identified ${aiOptimized.keywords.length} key keywords from job description`,
+                    `Translated ${aiOptimized.skills.length} military skills to civilian equivalents`,
+                    `Generated ${aiOptimized.achievements.length} quantifiable achievements`,
+                    'Optimized content for ATS (Applicant Tracking System) compatibility',
+                    'Emphasized leadership and management experience for civilian context'
+                ];
+                
+                insightsList.innerHTML = insights.map(insight => 
+                    `<div class="insight-item">${insight}</div>`
+                ).join('');
+                
+                aiInsights.style.display = 'block';
+            }
         }
 
         function generateAIOptimizedCV(data, aiOptimized) {
@@ -2145,6 +2357,8 @@
 
         function displayCV(cvData) {
             const cvPreview = document.getElementById('cvPreview');
+            if (!cvPreview) return;
+            
             cvPreview.style.display = 'block';
             
             const branchNames = {
@@ -2212,27 +2426,11 @@
                         </ul>
                     </div>
                     
-                    <div style="margin-bottom: 35px;">
-                        <h3 style="color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; margin-bottom: 20px; font-size: 24px;">
-                            Military Experience
-                        </h3>
-                        <p style="line-height: 1.8; font-size: 16px; text-align: justify;">${cvData.experience || 'Comprehensive military experience available upon request.'}</p>
-                    </div>
-                    
-                    ${cvData.keywords && cvData.keywords.length > 0 ? `
-                    <div style="margin-bottom: 35px; background: #f0f8ff; padding: 20px; border-radius: 8px;">
-                        <p style="font-size: 14px; color: #666; margin-bottom: 10px;"><strong>ATS Keywords:</strong></p>
-                        <p style="font-size: 13px; color: #777; line-height: 1.6;">
-                            ${cvData.keywords.join(' • ')}
-                        </p>
-                    </div>
-                    ` : ''}
-                    
                     <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 1px solid #ddd;">
-                        <button onclick="downloadCV()" style="background: var(--primary-color); color: white; padding: 12px 35px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-right: 15px;">
+                        <button onclick="showToast('Download feature will be available with backend integration')" style="background: var(--primary-color); color: white; padding: 12px 35px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-right: 15px;">
                             📥 Download CV
                         </button>
-                        <button onclick="printCV()" style="background: var(--secondary-color); color: white; padding: 12px 35px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;">
+                        <button onclick="window.print()" style="background: var(--secondary-color); color: white; padding: 12px 35px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;">
                             🖨️ Print CV
                         </button>
                     </div>
@@ -2243,35 +2441,45 @@
             cvPreview.scrollIntoView({ behavior: 'smooth' });
         }
 
-        function downloadCV() {
-            // In a real implementation, this would generate a PDF
-            showToast('CV download feature will be available with backend integration');
-        }
-
-        function printCV() {
-            window.print();
-        }
-
         // Profile Functions
         function updateProfileDisplay() {
             if (currentUser) {
-                document.getElementById('profileDisplayName').textContent = currentUser.name;
-                document.getElementById('profileDisplayService').textContent = 
-                    `${currentUser.rank}, ${currentUser.branch.toUpperCase()} • ${currentUser.yearsOfService} Years`;
+                const profileDisplayName = document.getElementById('profileDisplayName');
+                const profileDisplayService = document.getElementById('profileDisplayService');
+                
+                if (profileDisplayName) {
+                    profileDisplayName.textContent = currentUser.name;
+                }
+                if (profileDisplayService) {
+                    profileDisplayService.textContent = 
+                        `${currentUser.rank}, ${currentUser.branch.toUpperCase()} • ${currentUser.yearsOfService} Years`;
+                }
                 
                 // Update form fields
-                document.getElementById('profileName').value = currentUser.name;
-                document.getElementById('profileBranch').value = currentUser.branch;
-                document.getElementById('profileYears').value = currentUser.yearsOfService;
+                const fields = ['profileName', 'profileBranch', 'profileYears'];
+                const values = [currentUser.name, currentUser.branch, currentUser.yearsOfService];
+                
+                fields.forEach((fieldId, index) => {
+                    const field = document.getElementById(fieldId);
+                    if (field) field.value = values[index];
+                });
                 
                 // Update stats
-                document.getElementById('profileJobsApplied').textContent = userProfile.jobsApplied;
-                document.getElementById('profileCVsGenerated').textContent = userProfile.cvsGenerated;
+                const stats = [
+                    ['profileJobsApplied', userProfile.jobsApplied],
+                    ['profileCVsGenerated', userProfile.cvsGenerated]
+                ];
+                
+                stats.forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = value;
+                });
                 
                 const avgScore = userProfile.matchScores.length > 0 
                     ? Math.round(userProfile.matchScores.reduce((a, b) => a + b, 0) / userProfile.matchScores.length)
                     : 0;
-                document.getElementById('profileMatchScore').textContent = avgScore + '%';
+                const scoreElement = document.getElementById('profileMatchScore');
+                if (scoreElement) scoreElement.textContent = avgScore + '%';
             }
         }
 
@@ -2279,18 +2487,19 @@
             showLoader();
             
             const profileData = {
-                name: document.getElementById('profileName').value,
-                email: document.getElementById('profileEmail').value,
-                phone: document.getElementById('profilePhone').value,
-                branch: document.getElementById('profileBranch').value,
-                years: document.getElementById('profileYears').value
+                name: document.getElementById('profileName')?.value,
+                email: document.getElementById('profileEmail')?.value,
+                phone: document.getElementById('profilePhone')?.value,
+                branch: document.getElementById('profileBranch')?.value,
+                years: document.getElementById('profileYears')?.value
             };
             
             // Simulate profile update
             setTimeout(() => {
                 if (profileData.name) {
                     currentUser.name = profileData.name;
-                    document.getElementById('userName').textContent = `Welcome, ${currentUser.name}`;
+                    const userName = document.getElementById('userName');
+                    if (userName) userName.textContent = `Welcome, ${currentUser.name}`;
                 }
                 
                 if (profileData.branch) currentUser.branch = profileData.branch;
@@ -2304,29 +2513,53 @@
 
         // Utility Functions
         function showLoader() {
-            document.getElementById('loader').style.display = 'block';
+            const loader = document.getElementById('loader');
+            if (loader) loader.style.display = 'block';
         }
 
         function hideLoader() {
-            document.getElementById('loader').style.display = 'none';
+            const loader = document.getElementById('loader');
+            if (loader) loader.style.display = 'none';
         }
 
         function showToast(message) {
             const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.display = 'block';
-            
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, 3000);
+            if (toast) {
+                toast.textContent = message;
+                toast.style.display = 'block';
+                
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 3000);
+            } else {
+                // Fallback for debugging
+                console.log('TOAST:', message);
+            }
+        }
+
+        // Manual search for testing
+        function forceRealJobSearch() {
+            console.log('🔄 Force searching for real jobs...');
+            showLoader();
+            searchForRealJobs().then(jobs => {
+                if (jobs.length > 0) {
+                    displayJobs(jobs, 'jobResults');
+                    showToast(`Force search found ${jobs.length} real jobs!`);
+                } else {
+                    showToast('Force search: No real jobs found from API');
+                }
+                hideLoader();
+            });
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Real Data Career Portal initialized!');
+            console.log('🎯 This version prioritizes REAL job data from API');
+            
             // Add some initial animation to login card
             const loginCard = document.querySelector('.login-card');
             if (loginCard) {
-                // Card starts invisible and fades in
                 loginCard.style.opacity = '0';
                 setTimeout(() => {
                     loginCard.style.opacity = '1';
@@ -2335,7 +2568,64 @@
             
             // Initialize skills display
             updateSkillsDisplay();
+            
+            // Add skill input listener
+            const skillInput = document.getElementById('skillInput');
+            if (skillInput) {
+                skillInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addSkill();
+                    }
+                });
+            }
+            
+            // Test API immediately to check if it's working
+            setTimeout(testAPIConnection, 2000);
         });
+
+        // Comprehensive API test
+        async function testAPIConnection() {
+            console.log('🔬 Testing API connection with multiple queries...');
+            
+            const testQueries = ['jobs india', 'manager india', 'work india'];
+            let workingQueries = 0;
+            
+            for (const query of testQueries) {
+                try {
+                    const result = await fetchRealJobsFromAPI(query, 1);
+                    if (result.length > 0) {
+                        workingQueries++;
+                        console.log(`✅ API working for "${query}": ${result.length} jobs found`);
+                    } else {
+                        console.log(`❌ API returned no jobs for "${query}"`);
+                    }
+                } catch (error) {
+                    console.log(`❌ API failed for "${query}":`, error.message);
+                }
+                
+                // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            if (workingQueries > 0) {
+                console.log(`🎉 API is working! ${workingQueries}/${testQueries.length} test queries successful`);
+                showToast('API connection verified! Real job data available.');
+            } else {
+                console.log('⚠️ API is not returning job data for any test queries');
+                showToast('API connection issues detected. May show limited data.');
+            }
+        }
+
+        // Export debugging functions
+        window.RealJobPortal = {
+            searchForRealJobs,
+            fetchRealJobsFromAPI,
+            forceRealJobSearch,
+            testAPIConnection,
+            searchJobs,
+            generateRealRecommendations
+        };
 
         // Prevent form submission on Enter in search fields
         document.addEventListener('keypress', function(e) {
@@ -2346,6 +2636,7 @@
                 }
             }
         });
+
     </script>
 </body>
 </html>
